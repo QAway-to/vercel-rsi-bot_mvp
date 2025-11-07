@@ -1,0 +1,10 @@
+fastapi==0.104.1
+uvicorn==0.24.0
+ccxt 
+pandas
+pandas_ta
+loguru==0.7.2
+python-dotenv==1.0.0
+requests
+
+
