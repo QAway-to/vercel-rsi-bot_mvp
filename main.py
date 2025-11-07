@@ -28,12 +28,8 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Initialize database on startup
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database on application startup."""
-    init_db()
-    logger.info("Application started. Database initialized.")
+# Initialize database lazily (not on startup for serverless)
+# Database will be initialized on first use
 
 
 @app.get("/")
@@ -172,7 +168,7 @@ async def get_trades(limit: int = 10):
         )
 
 
-# Vercel requires this handler
-# This is the entry point for serverless functions
-handler = app
+# Vercel serverless function handler
+# For Vercel, we export the app directly as ASGI application
+# Vercel's @vercel/python automatically handles FastAPI apps
 

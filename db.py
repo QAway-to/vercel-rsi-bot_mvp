@@ -3,11 +3,20 @@ Simple SQLite database for storing simulated trade history.
 """
 import sqlite3
 import json
+import os
 from datetime import datetime
 from typing import List, Dict, Optional
 from pathlib import Path
 
-DB_PATH = Path("trades.db")
+# Use /tmp directory for serverless environments (Vercel, AWS Lambda, etc.)
+# This is the only writable directory in serverless functions
+# For local development, use current directory
+if os.environ.get("VERCEL") or os.environ.get("LAMBDA_TASK_ROOT"):
+    # Serverless environment - use /tmp
+    DB_PATH = Path("/tmp/trades.db")
+else:
+    # Local development
+    DB_PATH = Path("trades.db")
 
 
 def init_db() -> None:
