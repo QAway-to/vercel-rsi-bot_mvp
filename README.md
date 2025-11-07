@@ -6,10 +6,22 @@ This FastAPI application simulates a trading bot for Bybit futures based on RSI 
 
 - **Mock RSI Calculation**: Generates random RSI values (10-90) for demonstration
 - **Simulated Trading**: Executes BUY/SELL trades based on RSI thresholds
+- **Security Hardening**: API-key authentication, request deduplication, sequence tracking, and balance checks to prevent double spend
+- **Duplicate Protection**: Trade hashing and idempotency keys guard against replayed requests
 - **Telegram Notifications**: Sends trade alerts to Telegram (optional)
-- **Trade History**: Stores simulated trades in SQLite database
-- **RESTful API**: Clean FastAPI endpoints for all operations
+- **Trade History**: Stores simulated trades in SQLite database (serverless-friendly `/tmp` storage)
+- **RESTful API + Web UI**: Secure endpoints with a Tailwind-powered dashboard
 - **Vercel Ready**: Configured for serverless deployment on Vercel
+
+## 🔐 Security Hardening
+
+- **API Key Authentication**: Protect sensitive endpoints (`POST /buy`, `POST /sell`, `POST /notify`) with configurable API keys via the `X-API-Key` header.
+- **Request Idempotency**: Every request is hashed (pair + action + quantity + request ID). Duplicates return the original trade, preventing accidental replays.
+- **Sequence Enforcement**: Monotonic sequence numbers per pair/action prevent out-of-order or replayed trades.
+- **Balance Accounting**: Quote/base balances are tracked atomically to prevent double spending. Trades fail if insufficient funds.
+- **Audit Trail**: Each trade stores transaction ID, sequence, request hash, and balance snapshot for forensic analysis.
+- **Key Handling Guidance**: Environment template encourages key hashing (pepper) and secure storage via secret managers. Secrets are masked in logs.
+- **Serverless Safety**: Uses `/tmp` for writable storage, lazy initialization, and WAL mode for better reliability in Vercel.
 
 ## 🚀 Run Locally
 
@@ -50,9 +62,11 @@ This FastAPI application simulates a trading bot for Bybit futures based on RSI 
    cp .env.example .env
    ```
 
-   Edit `.env` and add your Telegram credentials (optional):
-   - `TELEGRAM_TOKEN`: Get from [@BotFather](https://t.me/BotFather) on Telegram
-   - `TELEGRAM_CHAT_ID`: Get from [@userinfobot](https://t.me/userinfobot) on Telegram
+   Edit `.env` and configure credentials:
+   - `TELEGRAM_TOKEN` / `TELEGRAM_CHAT_ID` (optional notifications)
+   - `API_KEYS` – comma-separated keys allowed to call protected endpoints (required for UI trades)
+   - `KEY_HASH_PEPPER` (optional) – adds an HMAC pepper for hashing secrets
+   - Adjust balances (`DEFAULT_BASE_BALANCE`, `DEFAULT_QUOTE_BALANCE`) and default quantity as needed
 
 5. **Run the application:**
 
@@ -103,9 +117,15 @@ This FastAPI application simulates a trading bot for Bybit futures based on RSI 
      - `BYBIT_API_SECRET`
      - `TELEGRAM_TOKEN` (optional)
      - `TELEGRAM_CHAT_ID` (optional)
-     - `TRADING_PAIR` (optional, defaults to BTCUSDT)
-     - `RSI_OVERSOLD` (optional, defaults to 20)
-     - `RSI_OVERBOUGHT` (optional, defaults to 80)
+     - `TRADING_PAIR`
+     - `RSI_OVERSOLD`
+     - `RSI_OVERBOUGHT`
+     - `DEFAULT_BASE_BALANCE`
+     - `DEFAULT_QUOTE_BALANCE`
+     - `DEFAULT_ORDER_QUANTITY`
+     - `API_KEYS`
+     - `KEY_HASH_PEPPER` (optional)
+     - `API_KEY_HEADER_NAME` (optional)
 6. Click **"Deploy"**
 
 ### Step 3: Access Your API
@@ -124,7 +144,7 @@ Root endpoint with API information.
 ```json
 {
   "name": "RSI Trading Bot Demo",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Simulated RSI-based trading bot for testing",
   "endpoints": {...}
 }
@@ -143,7 +163,7 @@ Health check endpoint.
 ```
 
 ### `GET /status`
-Get current trading status including RSI, price, and trade summary.
+Get current trading status including RSI, price, balance snapshot, and trade summary.
 
 **Response:**
 ```json
@@ -157,12 +177,31 @@ Get current trading status including RSI, price, and trade summary.
     "total_trades": 5,
     "buy_trades": 3,
     "sell_trades": 2
+  },
+  "balances": {
+    "BTC": 0.85,
+    "USDT": 41234.56
   }
 }
 ```
 
 ### `POST /buy`
-Simulate a BUY trade if RSI is below oversold threshold (default: 20).
+Simulate a BUY trade if RSI is below oversold threshold (default: 20). Requires `X-API-Key` header.
+
+**Request:**
+```http
+POST /buy HTTP/1.1
+Host: example.vercel.app
+Content-Type: application/json
+X-API-Key: your_api_key
+
+{
+  "quantity": 0.01,
+  "request_id": "24f7f3ba-2d9d-4fc0-8c52-5c3c2a6c978a",
+  "client_ref": "web-buy-1700000000",
+  "sequence_number": 1
+}
+```
 
 **Response (executed):**
 ```json
@@ -171,9 +210,18 @@ Simulate a BUY trade if RSI is below oversold threshold (default: 20).
   "action": "BUY",
   "rsi": 18.4,
   "price": 45000.0,
-  "quantity": 0.005,
+  "quantity": 0.01,
   "status": "executed",
-  "trade_id": 1
+  "trade_id": 1,
+  "transaction_id": "fS3_h4e2-l8zO0yz3ak7",
+  "sequence_number": 1,
+  "request_id": "24f7f3ba-2d9d-4fc0-8c52-5c3c2a6c978a",
+  "request_hash": "f6bf...",
+  "balances": {
+    "BTC": 1.01,
+    "USDT": 44950.0
+  },
+  "message": "Trade executed successfully."
 }
 ```
 
@@ -183,13 +231,39 @@ Simulate a BUY trade if RSI is below oversold threshold (default: 20).
   "pair": "BTCUSDT",
   "action": "BUY",
   "rsi": 45.2,
+  "price": 45123.45,
+  "quantity": 0.01,
   "status": "rejected",
-  "reason": "RSI (45.2) is not below oversold threshold (20)"
+  "trade_id": null,
+  "transaction_id": null,
+  "sequence_number": 1,
+  "request_id": "24f7f3ba-2d9d-4fc0-8c52-5c3c2a6c978a",
+  "request_hash": "f6bf...",
+  "balances": {
+    "BTC": 1.00,
+    "USDT": 45000.0
+  },
+  "message": "RSI (45.2) is not below oversold threshold (20)."
 }
 ```
 
 ### `POST /sell`
-Simulate a SELL trade if RSI is above overbought threshold (default: 80).
+Simulate a SELL trade if RSI is above overbought threshold (default: 80). Requires `X-API-Key` header.
+
+**Request:**
+```http
+POST /sell HTTP/1.1
+Host: example.vercel.app
+Content-Type: application/json
+X-API-Key: your_api_key
+
+{
+  "quantity": 0.01,
+  "request_id": "60d269e0-5cb1-4df4-a4c9-b6437bc44d8f",
+  "client_ref": "web-sell-1700000500",
+  "sequence_number": 2
+}
+```
 
 **Response (executed):**
 ```json
@@ -198,25 +272,45 @@ Simulate a SELL trade if RSI is above overbought threshold (default: 80).
   "action": "SELL",
   "rsi": 82.1,
   "price": 45100.0,
-  "quantity": 0.005,
+  "quantity": 0.01,
   "status": "executed",
-  "trade_id": 2
+  "trade_id": 2,
+  "transaction_id": "dA2P73or7iXbvtcL1n",
+  "sequence_number": 2,
+  "request_id": "60d269e0-5cb1-4df4-a4c9-b6437bc44d8f",
+  "request_hash": "9d21...",
+  "balances": {
+    "BTC": 0.99,
+    "USDT": 45451.0
+  },
+  "message": "Trade executed successfully."
 }
 ```
 
-**Response (rejected):**
+**Response (rejected - insufficient balance):**
 ```json
 {
   "pair": "BTCUSDT",
   "action": "SELL",
-  "rsi": 45.2,
+  "rsi": 48.2,
+  "price": 45200.0,
+  "quantity": 2.0,
   "status": "rejected",
-  "reason": "RSI (45.2) is not above overbought threshold (80)"
+  "trade_id": null,
+  "transaction_id": null,
+  "sequence_number": 2,
+  "request_id": "60d269e0-5cb1-4df4-a4c9-b6437bc44d8f",
+  "request_hash": "9d21...",
+  "balances": {
+    "BTC": 1.00,
+    "USDT": 45000.0
+  },
+  "message": "Insufficient BTC balance. Needed 2.000000, available 1.000000."
 }
 ```
 
 ### `POST /notify`
-Send a test notification to Telegram.
+Send a test notification to Telegram (requires `X-API-Key`).
 
 **Response:**
 ```json
@@ -235,13 +329,21 @@ Get recent trade history.
   "trades": [
     {
       "id": 1,
+      "transaction_id": "fS3_h4e2-l8zO0yz3ak7",
+      "sequence_number": 1,
       "timestamp": "2024-01-01T12:00:00",
       "pair": "BTCUSDT",
       "action": "BUY",
       "rsi": 18.4,
       "price": 45000.0,
-      "quantity": 0.005,
-      "status": "executed"
+      "quantity": 0.01,
+      "status": "executed",
+      "metadata": {
+        "balances": {
+          "BTC": 1.01,
+          "USDT": 44950.0
+        }
+      }
     }
   ],
   "count": 1

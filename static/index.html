@@ -9,101 +9,128 @@
     <style>
         @keyframes pulse-slow {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            50% { opacity: 0.6; }
         }
-        .pulse-slow {
-            animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        .card-hover {
-            transition: all 0.3s ease;
-        }
-        .card-hover:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        }
+        .pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.25); }
+        body { font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     </style>
 </head>
-<body class="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 min-h-screen text-white">
+<body class="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 min-h-screen text-white">
     <div class="container mx-auto px-4 py-8 max-w-7xl">
         <!-- Header -->
-        <div class="text-center mb-8">
-            <h1 class="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                <i class="fas fa-chart-line mr-2"></i>RSI Trading Bot Demo
-            </h1>
-            <p class="text-gray-400">Simulated RSI-based trading bot for testing</p>
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+            <div>
+                <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-400 via-cyan-300 to-purple-500 bg-clip-text text-transparent mb-2">
+                    <i class="fas fa-robot mr-2"></i>RSI Trading Bot Demo
+                </h1>
+                <p class="text-gray-400 max-w-2xl">
+                    Production-ready simulation with security controls, duplicate prevention, and real-time monitoring.
+                </p>
+            </div>
+            <div class="bg-gray-800/80 border border-gray-700 rounded-xl p-4 w-full md:w-72 shadow-lg">
+                <h3 class="text-sm uppercase tracking-wide text-gray-400 mb-2 flex items-center">
+                    <i class="fas fa-shield-alt text-emerald-400 mr-2"></i>API Access
+                </h3>
+                <input id="apiKeyInput" type="password" placeholder="Enter API key" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <div class="flex justify-between mt-2 text-xs text-gray-500">
+                    <span id="apiKeyStatus" class="text-red-400">Not configured</span>
+                    <button id="toggleKey" class="text-blue-400 hover:text-blue-300">Show</button>
+                </div>
+            </div>
         </div>
 
-        <!-- Status Card -->
-        <div class="bg-gray-800 rounded-xl shadow-2xl p-6 mb-6 card-hover border border-gray-700">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-2xl font-semibold flex items-center">
-                    <i class="fas fa-info-circle text-blue-400 mr-2"></i>Current Status
+        <!-- Status and balances -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-6 card-hover">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-semibold flex items-center">
+                        <i class="fas fa-info-circle text-blue-400 mr-2"></i>System Status
+                    </h2>
+                    <button onclick="loadStatus()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        <i class="fas fa-sync-alt mr-2"></i>Refresh
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gray-800/70 rounded-xl p-4">
+                        <div class="text-gray-400 text-xs uppercase">Trading Pair</div>
+                        <div class="text-2xl font-bold" id="pair">-</div>
+                    </div>
+                    <div class="bg-gray-800/70 rounded-xl p-4">
+                        <div class="text-gray-400 text-xs uppercase">RSI Value</div>
+                        <div class="text-2xl font-bold" id="rsi">-</div>
+                    </div>
+                    <div class="bg-gray-800/70 rounded-xl p-4">
+                        <div class="text-gray-400 text-xs uppercase">Price</div>
+                        <div class="text-2xl font-bold" id="price">-</div>
+                    </div>
+                </div>
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gray-800/60 rounded-xl p-4">
+                        <div class="text-gray-400 text-xs uppercase">Total Trades</div>
+                        <div class="text-xl font-semibold text-emerald-400" id="totalTrades">0</div>
+                    </div>
+                    <div class="bg-gray-800/60 rounded-xl p-4">
+                        <div class="text-gray-400 text-xs uppercase">BUY Trades</div>
+                        <div class="text-xl font-semibold text-blue-400" id="buyTrades">0</div>
+                    </div>
+                    <div class="bg-gray-800/60 rounded-xl p-4">
+                        <div class="text-gray-400 text-xs uppercase">SELL Trades</div>
+                        <div class="text-xl font-semibold text-rose-400" id="sellTrades">0</div>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <h3 class="text-sm uppercase tracking-wide text-gray-400 mb-2 flex items-center">
+                        <i class="fas fa-wallet text-amber-400 mr-2"></i>Balances Snapshot
+                    </h3>
+                    <div id="balancesGrid" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+                </div>
+            </div>
+
+            <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 card-hover">
+                <h2 class="text-2xl font-semibold flex items-center mb-4">
+                    <i class="fas fa-sliders-h text-purple-400 mr-2"></i>Trade Controls
                 </h2>
-                <button onclick="loadStatus()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors">
-                    <i class="fas fa-sync-alt mr-2"></i>Refresh
-                </button>
-            </div>
-            <div id="statusContent" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="bg-gray-700 rounded-lg p-4">
-                    <div class="text-gray-400 text-sm mb-1">Trading Pair</div>
-                    <div class="text-2xl font-bold" id="pair">-</div>
-                </div>
-                <div class="bg-gray-700 rounded-lg p-4">
-                    <div class="text-gray-400 text-sm mb-1">RSI Value</div>
-                    <div class="text-2xl font-bold" id="rsi">-</div>
-                </div>
-                <div class="bg-gray-700 rounded-lg p-4">
-                    <div class="text-gray-400 text-sm mb-1">Price</div>
-                    <div class="text-2xl font-bold" id="price">-</div>
-                </div>
-            </div>
-            <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="bg-gray-700 rounded-lg p-4">
-                    <div class="text-gray-400 text-sm mb-1">Total Trades</div>
-                    <div class="text-xl font-bold text-green-400" id="totalTrades">0</div>
-                </div>
-                <div class="bg-gray-700 rounded-lg p-4">
-                    <div class="text-gray-400 text-sm mb-1">BUY Trades</div>
-                    <div class="text-xl font-bold text-blue-400" id="buyTrades">0</div>
-                </div>
-                <div class="bg-gray-700 rounded-lg p-4">
-                    <div class="text-gray-400 text-sm mb-1">SELL Trades</div>
-                    <div class="text-xl font-bold text-red-400" id="sellTrades">0</div>
-                </div>
+                <label class="block text-sm text-gray-400 mb-2">Order Quantity (Base Asset)</label>
+                <input id="quantityInput" type="number" step="0.0001" min="0.0001" value="0.01" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                <p class="text-xs text-gray-500 mt-2">Adjust quantity per order. Balances and RSI thresholds will still be enforced server-side.</p>
             </div>
         </div>
 
-        <!-- Action Buttons -->
+        <!-- Action buttons -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <button onclick="executeBuy()" class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold py-4 px-6 rounded-xl transition-all card-hover">
+            <button onclick="executeTrade('BUY')" class="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-semibold py-4 px-6 rounded-2xl transition-all card-hover">
                 <i class="fas fa-arrow-up mr-2"></i>Execute BUY
             </button>
-            <button onclick="executeSell()" class="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-4 px-6 rounded-xl transition-all card-hover">
+            <button onclick="executeTrade('SELL')" class="bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-400 hover:to-red-500 text-white font-semibold py-4 px-6 rounded-2xl transition-all card-hover">
                 <i class="fas fa-arrow-down mr-2"></i>Execute SELL
             </button>
-            <button onclick="sendNotification()" class="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold py-4 px-6 rounded-xl transition-all card-hover">
+            <button onclick="sendNotification()" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-semibold py-4 px-6 rounded-2xl transition-all card-hover">
                 <i class="fas fa-bell mr-2"></i>Test Notification
             </button>
         </div>
 
         <!-- Result Message -->
-        <div id="resultMessage" class="hidden mb-6 p-4 rounded-lg"></div>
+        <div id="resultMessage" class="hidden mb-6 p-4 rounded-xl border"></div>
 
         <!-- Trades History -->
-        <div class="bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 card-hover">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-2xl font-semibold flex items-center">
-                    <i class="fas fa-history text-purple-400 mr-2"></i>Recent Trades
+                    <i class="fas fa-history text-cyan-400 mr-2"></i>Recent Trades
                 </h2>
-                <button onclick="loadTrades()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition-colors">
+                <button onclick="loadTrades()" class="bg-cyan-600 hover:bg-cyan-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
                     <i class="fas fa-sync-alt mr-2"></i>Refresh
                 </button>
             </div>
             <div id="tradesContent" class="overflow-x-auto">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-700">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-800/80">
                         <tr>
                             <th class="px-4 py-3">Time</th>
+                            <th class="px-4 py-3">Transaction</th>
+                            <th class="px-4 py-3">Sequence</th>
                             <th class="px-4 py-3">Pair</th>
                             <th class="px-4 py-3">Action</th>
                             <th class="px-4 py-3">RSI</th>
@@ -114,7 +141,7 @@
                     </thead>
                     <tbody id="tradesTableBody">
                         <tr>
-                            <td colspan="7" class="text-center py-8 text-gray-400">Loading trades...</td>
+                            <td colspan="9" class="text-center py-8 text-gray-500">Loading trades...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -124,39 +151,110 @@
 
     <script>
         const API_BASE = window.location.origin;
+        const STORAGE_KEY_API = 'rsi-bot-api-key';
+        const STORAGE_KEY_QTY = 'rsi-bot-quantity';
+        const sequenceTracker = { BUY: 0, SELL: 0 };
 
-        // Load status on page load
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const apiKeyStatus = document.getElementById('apiKeyStatus');
+        const toggleKeyButton = document.getElementById('toggleKey');
+        const quantityInput = document.getElementById('quantityInput');
+
+        // Initialize stored values
+        const storedApiKey = localStorage.getItem(STORAGE_KEY_API) || '';
+        if (storedApiKey) {
+            apiKeyInput.value = storedApiKey;
+            apiKeyStatus.textContent = 'Active';
+            apiKeyStatus.classList.remove('text-red-400');
+            apiKeyStatus.classList.add('text-emerald-400');
+        }
+        const storedQty = localStorage.getItem(STORAGE_KEY_QTY);
+        if (storedQty) {
+            quantityInput.value = storedQty;
+        }
+
+        apiKeyInput.addEventListener('input', () => {
+            const value = apiKeyInput.value.trim();
+            if (value) {
+                localStorage.setItem(STORAGE_KEY_API, value);
+                apiKeyStatus.textContent = 'Active';
+                apiKeyStatus.classList.remove('text-red-400');
+                apiKeyStatus.classList.add('text-emerald-400');
+            } else {
+                localStorage.removeItem(STORAGE_KEY_API);
+                apiKeyStatus.textContent = 'Not configured';
+                apiKeyStatus.classList.add('text-red-400');
+                apiKeyStatus.classList.remove('text-emerald-400');
+            }
+        });
+
+        toggleKeyButton.addEventListener('click', () => {
+            apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+            toggleKeyButton.textContent = apiKeyInput.type === 'password' ? 'Show' : 'Hide';
+        });
+
+        quantityInput.addEventListener('change', () => {
+            const value = parseFloat(quantityInput.value);
+            if (!isNaN(value) && value > 0) {
+                localStorage.setItem(STORAGE_KEY_QTY, value.toString());
+            }
+        });
+
         window.addEventListener('DOMContentLoaded', () => {
             loadStatus();
             loadTrades();
-            // Auto-refresh every 30 seconds
             setInterval(loadStatus, 30000);
         });
+
+        function buildHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            const apiKey = localStorage.getItem(STORAGE_KEY_API);
+            if (apiKey) {
+                headers['X-API-Key'] = apiKey;
+            }
+            return headers;
+        }
 
         async function loadStatus() {
             try {
                 const response = await fetch(`${API_BASE}/status`);
+                if (!response.ok) throw new Error('Status request failed');
                 const data = await response.json();
-                
+
                 document.getElementById('pair').textContent = data.pair || '-';
-                document.getElementById('rsi').textContent = data.rsi ? data.rsi.toFixed(2) : '-';
-                document.getElementById('price').textContent = data.price ? `$${data.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-';
-                
-                if (data.trades) {
-                    document.getElementById('totalTrades').textContent = data.trades.total_trades || 0;
-                    document.getElementById('buyTrades').textContent = data.trades.buy_trades || 0;
-                    document.getElementById('sellTrades').textContent = data.trades.sell_trades || 0;
+                const rsiValue = data.rsi ?? null;
+                const rsiElement = document.getElementById('rsi');
+                rsiElement.textContent = rsiValue !== null ? Number(rsiValue).toFixed(2) : '-';
+                if (rsiValue !== null) {
+                    if (rsiValue < data.rsi_oversold) {
+                        rsiElement.className = 'text-2xl font-bold text-emerald-400';
+                    } else if (rsiValue > data.rsi_overbought) {
+                        rsiElement.className = 'text-2xl font-bold text-rose-400';
+                    } else {
+                        rsiElement.className = 'text-2xl font-bold text-amber-300';
+                    }
                 }
 
-                // Color code RSI
-                const rsiElement = document.getElementById('rsi');
-                const rsi = data.rsi;
-                if (rsi < 20) {
-                    rsiElement.className = 'text-2xl font-bold text-green-400';
-                } else if (rsi > 80) {
-                    rsiElement.className = 'text-2xl font-bold text-red-400';
-                } else {
-                    rsiElement.className = 'text-2xl font-bold text-yellow-400';
+                document.getElementById('price').textContent = data.price ? `$${Number(data.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-';
+
+                if (data.trades) {
+                    document.getElementById('totalTrades').textContent = data.trades.total_trades ?? 0;
+                    document.getElementById('buyTrades').textContent = data.trades.buy_trades ?? 0;
+                    document.getElementById('sellTrades').textContent = data.trades.sell_trades ?? 0;
+                }
+
+                const balancesContainer = document.getElementById('balancesGrid');
+                balancesContainer.innerHTML = '';
+                if (data.balances) {
+                    Object.entries(data.balances).forEach(([asset, balance]) => {
+                        const card = document.createElement('div');
+                        card.className = 'bg-gray-800/80 rounded-xl p-3 border border-gray-700/60';
+                        card.innerHTML = `
+                            <div class="text-xs uppercase text-gray-400 mb-1">${asset}</div>
+                            <div class="text-lg font-semibold">${Number(balance).toLocaleString('en-US', { maximumFractionDigits: 8 })}</div>
+                        `;
+                        balancesContainer.appendChild(card);
+                    });
                 }
             } catch (error) {
                 console.error('Error loading status:', error);
@@ -164,48 +262,61 @@
             }
         }
 
-        async function executeBuy() {
+        async function executeTrade(action) {
             try {
-                showMessage('Executing BUY trade...', 'info');
-                const response = await fetch(`${API_BASE}/buy`, { method: 'POST' });
-                const data = await response.json();
-                
-                if (data.status === 'executed') {
-                    showMessage(`✅ BUY executed! RSI: ${data.rsi.toFixed(2)}, Price: $${data.price?.toLocaleString()}`, 'success');
-                } else {
-                    showMessage(`⚠️ BUY rejected: ${data.reason || 'RSI not in oversold territory'}`, 'warning');
-                }
-                loadStatus();
-                loadTrades();
-            } catch (error) {
-                showMessage('Error executing BUY', 'error');
-            }
-        }
+                const quantity = parseFloat(quantityInput.value) || null;
+                const payload = {
+                    quantity,
+                    request_id: crypto.randomUUID(),
+                    client_ref: `web-${action}-${Date.now()}`,
+                    sequence_number: sequenceTracker[action] + 1
+                };
 
-        async function executeSell() {
-            try {
-                showMessage('Executing SELL trade...', 'info');
-                const response = await fetch(`${API_BASE}/sell`, { method: 'POST' });
-                const data = await response.json();
-                
-                if (data.status === 'executed') {
-                    showMessage(`✅ SELL executed! RSI: ${data.rsi.toFixed(2)}, Price: $${data.price?.toLocaleString()}`, 'success');
-                } else {
-                    showMessage(`⚠️ SELL rejected: ${data.reason || 'RSI not in overbought territory'}`, 'warning');
+                showMessage(`${action} trade submitted...`, 'info');
+                const response = await fetch(`${API_BASE}/${action.toLowerCase()}`, {
+                    method: 'POST',
+                    headers: buildHeaders(),
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    const errorMsg = result.detail || JSON.stringify(result);
+                    showMessage(`❌ ${action} failed: ${errorMsg}`, 'error');
+                    return;
                 }
+
+                if (result.status === 'executed' && result.sequence_number) {
+                    sequenceTracker[action] = result.sequence_number;
+                    showMessage(`✅ ${action} executed! RSI: ${Number(result.rsi).toFixed(2)}, Price: $${Number(result.price).toLocaleString()}`, 'success');
+                } else {
+                    const msg = result.message || 'Trade not executed';
+                    showMessage(`⚠️ ${action} rejected: ${msg}`, 'warning');
+                }
+
                 loadStatus();
                 loadTrades();
             } catch (error) {
-                showMessage('Error executing SELL', 'error');
+                console.error(`Error executing ${action}:`, error);
+                showMessage(`Error executing ${action}`, 'error');
             }
         }
 
         async function sendNotification() {
             try {
                 showMessage('Sending test notification...', 'info');
-                const response = await fetch(`${API_BASE}/notify`, { method: 'POST' });
+                const response = await fetch(`${API_BASE}/notify`, {
+                    method: 'POST',
+                    headers: buildHeaders()
+                });
                 const data = await response.json();
-                
+                if (!response.ok) {
+                    const errorMsg = data.detail || JSON.stringify(data);
+                    showMessage(`❌ Notification failed: ${errorMsg}`, 'error');
+                    return;
+                }
+
                 if (data.status === 'sent') {
                     showMessage('✅ Notification sent successfully!', 'success');
                 } else if (data.status === 'skipped') {
@@ -214,6 +325,7 @@
                     showMessage(`❌ Notification failed: ${data.error || 'Unknown error'}`, 'error');
                 }
             } catch (error) {
+                console.error('Notification error:', error);
                 showMessage('Error sending notification', 'error');
             }
         }
@@ -221,48 +333,57 @@
         async function loadTrades() {
             try {
                 const response = await fetch(`${API_BASE}/trades?limit=10`);
+                if (!response.ok) throw new Error('Trade history request failed');
                 const data = await response.json();
-                
+
                 const tbody = document.getElementById('tradesTableBody');
                 if (data.trades && data.trades.length > 0) {
                     tbody.innerHTML = data.trades.map(trade => `
-                        <tr class="border-b border-gray-700 hover:bg-gray-700 transition-colors">
-                            <td class="px-4 py-3 text-sm">${new Date(trade.timestamp).toLocaleString()}</td>
+                        <tr class="border-b border-gray-800/60 hover:bg-gray-800/40 transition-colors">
+                            <td class="px-4 py-3 text-xs text-gray-400">${new Date(trade.timestamp).toLocaleString()}</td>
+                            <td class="px-4 py-3 font-mono text-xs">${trade.transaction_id || '-'}</td>
+                            <td class="px-4 py-3 text-xs">${trade.sequence_number ?? '-'}</td>
                             <td class="px-4 py-3 font-semibold">${trade.pair}</td>
                             <td class="px-4 py-3">
-                                <span class="px-2 py-1 rounded ${trade.action === 'BUY' ? 'bg-green-600' : 'bg-red-600'}">
+                                <span class="px-2 py-1 rounded-full text-xs ${trade.action === 'BUY' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}">
                                     ${trade.action}
                                 </span>
                             </td>
-                            <td class="px-4 py-3">${trade.rsi.toFixed(2)}</td>
-                            <td class="px-4 py-3">${trade.price ? `$${trade.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}</td>
-                            <td class="px-4 py-3">${trade.quantity || '-'}</td>
+                            <td class="px-4 py-3">${Number(trade.rsi).toFixed(2)}</td>
+                            <td class="px-4 py-3">${trade.price ? `$${Number(trade.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}</td>
+                            <td class="px-4 py-3">${trade.quantity ?? '-'}</td>
                             <td class="px-4 py-3">
-                                <span class="px-2 py-1 rounded ${trade.status === 'executed' ? 'bg-green-600' : 'bg-yellow-600'}">
+                                <span class="px-2 py-1 rounded-full text-xs ${trade.status === 'executed' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}">
                                     ${trade.status}
                                 </span>
                             </td>
                         </tr>
                     `).join('');
+
+                    // Update local sequence trackers based on most recent executed trades
+                    const latestBuy = data.trades.find(t => t.action === 'BUY' && t.status === 'executed');
+                    const latestSell = data.trades.find(t => t.action === 'SELL' && t.status === 'executed');
+                    if (latestBuy && latestBuy.sequence_number) {
+                        sequenceTracker['BUY'] = Math.max(sequenceTracker['BUY'], latestBuy.sequence_number);
+                    }
+                    if (latestSell && latestSell.sequence_number) {
+                        sequenceTracker['SELL'] = Math.max(sequenceTracker['SELL'], latestSell.sequence_number);
+                    }
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-gray-400">No trades yet</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-gray-500">No trades yet</td></tr>';
                 }
             } catch (error) {
                 console.error('Error loading trades:', error);
-                document.getElementById('tradesTableBody').innerHTML = 
-                    '<tr><td colspan="7" class="text-center py-8 text-red-400">Error loading trades</td></tr>';
+                document.getElementById('tradesTableBody').innerHTML = '<tr><td colspan="9" class="text-center py-8 text-red-400">Error loading trades</td></tr>';
             }
         }
 
         function showMessage(message, type) {
             const messageDiv = document.getElementById('resultMessage');
-            messageDiv.className = `mb-6 p-4 rounded-lg ${type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-yellow-600' : 'bg-blue-600'}`;
+            messageDiv.className = `mb-6 p-4 rounded-xl border ${type === 'success' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-200' : type === 'error' ? 'bg-rose-500/20 border-rose-500 text-rose-200' : type === 'warning' ? 'bg-amber-500/20 border-amber-500 text-amber-200' : 'bg-blue-500/20 border-blue-500 text-blue-200'}`;
             messageDiv.textContent = message;
             messageDiv.classList.remove('hidden');
-            
-            setTimeout(() => {
-                messageDiv.classList.add('hidden');
-            }, 5000);
+            setTimeout(() => messageDiv.classList.add('hidden'), 6000);
         }
     </script>
 </body>
