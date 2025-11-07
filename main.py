@@ -4,9 +4,11 @@ Designed for deployment on Vercel.
 """
 from datetime import datetime
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
 import sys
+from pathlib import Path
 
 from config import config
 from trader import get_trading_status, execute_buy, execute_sell
@@ -31,10 +33,19 @@ app = FastAPI(
 # Initialize database lazily (not on startup for serverless)
 # Database will be initialized on first use
 
+# Mount static files directory
+static_path = Path(__file__).parent / "static"
+if static_path.exists():
+    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+
 
 @app.get("/")
 async def root():
-    """Root endpoint with API information."""
+    """Serve the web interface."""
+    index_path = static_path / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+    # Fallback to JSON if static files not available
     return {
         "name": "RSI Trading Bot Demo",
         "version": "1.0.0",
@@ -45,6 +56,24 @@ async def root():
             "buy": "/buy (POST)",
             "sell": "/sell (POST)",
             "notify": "/notify (POST)"
+        }
+    }
+
+
+@app.get("/api")
+async def api_info():
+    """API information endpoint."""
+    return {
+        "name": "RSI Trading Bot Demo",
+        "version": "1.0.0",
+        "description": "Simulated RSI-based trading bot for testing",
+        "endpoints": {
+            "health": "/health",
+            "status": "/status",
+            "buy": "/buy (POST)",
+            "sell": "/sell (POST)",
+            "notify": "/notify (POST)",
+            "trades": "/trades (GET)"
         }
     }
 
