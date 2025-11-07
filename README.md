@@ -15,7 +15,7 @@ This FastAPI application simulates a trading bot for Bybit futures based on RSI 
 
 ## 🔐 Security Hardening
 
-- **API Key Authentication**: Protect sensitive endpoints (`POST /buy`, `POST /sell`, `POST /notify`) with configurable API keys via the `X-API-Key` header.
+- **API Key Authentication**: Protect sensitive endpoints (`POST /buy`, `POST /sell`, `POST /notify`) with configurable API keys via the `X-API-Key` header. Supports plain keys or SHA-256 hashes prefixed with `hash:` (generate with `python -c "from security import KeyManager; print('hash:' + KeyManager().hash_value('my_api_key'))"`).
 - **Request Idempotency**: Every request is hashed (pair + action + quantity + request ID). Duplicates return the original trade, preventing accidental replays.
 - **Sequence Enforcement**: Monotonic sequence numbers per pair/action prevent out-of-order or replayed trades.
 - **Balance Accounting**: Quote/base balances are tracked atomically to prevent double spending. Trades fail if insufficient funds.
